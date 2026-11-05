@@ -366,6 +366,17 @@
 #define IDC_SKIN_MODE                   1266
 #define IDC_SKIN_COLOR                  1267
 #define IDC_SKIN_BACKGROUND_SAVE        1268
+#define IDC_SKIN_CATEGORY               1269
+#define IDC_SKIN_IMAGE_PREVIEW          1270
+#define IDC_SKIN_IMAGE_INFO             1271
+#define IDC_SKIN_CATEGORY_LABEL         1272
+#define IDC_SKIN_IMAGE_LABEL            1273
+#define IDC_SKIN_PREVIEW_GROUP          1274
+#define IDC_SKIN_BACKUP_LABEL           1275
+#define IDC_SKIN_BACKGROUND_GROUP       1276
+#define IDC_SKIN_COLOR_LABEL            1277
+#define IDC_SKIN_INSTALL_FILE           1278
+#define IDC_SKIN_INSTALL_FOLDER         1279
 #define ID_KEY_DELETE                   32771
 #define ID_KEY_SPACE                    32772
 #define ID_KEY_ENTER                    32773

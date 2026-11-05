@@ -26,11 +26,77 @@
 class SkinEditor : public DialogEx
 {
 public:
-	explicit SkinEditor(const std::wstring& root) : root(root) {}
+	SkinEditor(const std::wstring& root, bool russian) : root(root), russian(russian) {}
 	bool changed = false;
 private:
 	std::wstring root;
+	bool russian;
 	std::vector<std::wstring> images;
+	std::vector<size_t> visibleImages;
+	ExImage preview;
+
+	// Categories are based on common skin folder names. Unusual skins are
+	// still fully accessible through the "All images" category.
+	int ImageCategory(const std::wstring& path)
+	{
+		std::wstring lower = path;
+		for (auto& c : lower) if (c >= L'A' && c <= L'Z') c += L'a' - L'A';
+		if (lower.find(L"button") != std::wstring::npos || lower.find(L"switch") != std::wstring::npos) return 2;
+		if (lower.find(L"scroll") != std::wstring::npos || lower.find(L"trackbar") != std::wstring::npos || lower.find(L"volumebar") != std::wstring::npos || lower.find(L"slider") != std::wstring::npos) return 3;
+		if (lower.find(L"cover") != std::wstring::npos) return 4;
+		if (lower.find(L"icons") != std::wstring::npos || lower.find(L"rating") != std::wstring::npos || lower.find(L"expand") != std::wstring::npos) return 5;
+		if (lower.find(L"background") != std::wstring::npos || lower.find(L"wallpaper") != std::wstring::npos || lower.find(L"back.") != std::wstring::npos) return 1;
+		return 6;
+	}
+
+	int SelectedImage()
+	{
+		int row = (int)::SendDlgItemMessageW(thisWnd, IDC_SKIN_IMAGES, LB_GETCURSEL, 0, 0);
+		if (row < 0 || (size_t)row >= visibleImages.size()) return -1;
+		return (int)visibleImages[row];
+	}
+
+	void UpdatePreview()
+	{
+		int index = SelectedImage();
+		preview.Clear();
+		::EnableWindow(::GetDlgItem(thisWnd, IDC_SKIN_REPLACE), index >= 0);
+		bool hasBackup = index >= 0 && FileSystem::Exists(root + images[index] + L".winyl-original");
+		::EnableWindow(::GetDlgItem(thisWnd, IDC_SKIN_RESTORE), hasBackup);
+		if (index >= 0)
+		{
+			::SetDlgItemTextW(thisWnd, IDC_SKIN_IMAGE_INFO, images[index].c_str());
+			RECT rc = {};
+			::GetClientRect(::GetDlgItem(thisWnd, IDC_SKIN_IMAGE_PREVIEW), &rc);
+			preview.ThumbnailFromFile(root + images[index], nullptr, rc.right - rc.left, rc.bottom - rc.top);
+		}
+		else ::SetDlgItemTextW(thisWnd, IDC_SKIN_IMAGE_INFO, russian ? L"\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435 \u0434\u043b\u044f \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0430." : L"Select an image to preview it.");
+		::InvalidateRect(::GetDlgItem(thisWnd, IDC_SKIN_IMAGE_PREVIEW), NULL, TRUE);
+	}
+
+	void ShowCategory()
+	{
+		int category = (int)::SendDlgItemMessageW(thisWnd, IDC_SKIN_CATEGORY, CB_GETCURSEL, 0, 0);
+		::SendDlgItemMessageW(thisWnd, IDC_SKIN_IMAGES, LB_RESETCONTENT, 0, 0);
+		visibleImages.clear();
+		HWND list = ::GetDlgItem(thisWnd, IDC_SKIN_IMAGES);
+		HDC dc = ::GetDC(list);
+		HGDIOBJ oldFont = ::SelectObject(dc, (HFONT)::SendMessageW(list, WM_GETFONT, 0, 0));
+		int extent = 0;
+		for (size_t i = 0; i < images.size(); ++i)
+		{
+			if (category != 0 && ImageCategory(images[i]) != category) continue;
+			visibleImages.push_back(i);
+			::SendDlgItemMessageW(thisWnd, IDC_SKIN_IMAGES, LB_ADDSTRING, 0, (LPARAM)images[i].c_str());
+			SIZE size = {};
+			::GetTextExtentPoint32W(dc, images[i].c_str(), (int)images[i].size(), &size);
+			extent = std::max(extent, (int)size.cx + 8);
+		}
+		::SelectObject(dc, oldFont);
+		::ReleaseDC(list, dc);
+		::SendDlgItemMessageW(thisWnd, IDC_SKIN_IMAGES, LB_SETHORIZONTALEXTENT, extent, 0);
+		UpdatePreview();
+	}
 
 	void Scan(const std::wstring& relative)
 	{
@@ -111,8 +177,8 @@ private:
 
 	void ImageAction(bool restore)
 	{
-		int index = (int)::SendDlgItemMessageW(thisWnd, IDC_SKIN_IMAGES, LB_GETCURSEL, 0, 0);
-		if (index < 0 || (size_t)index >= images.size()) return;
+		int index = SelectedImage();
+		if (index < 0) return;
 		std::wstring dest = root + images[index], source;
 		if (restore) source = dest + L".winyl-original";
 		else {
@@ -127,18 +193,37 @@ private:
 		}
 		if (!::CopyFileW(source.c_str(), dest.c_str(), FALSE)) { ::MessageBoxW(thisWnd, L"Could not replace image or no original backup exists.", L"Skin editor", MB_ICONERROR); return; }
 		changed = true;
+		UpdatePreview();
 	}
 
-	INT_PTR DialogProc(HWND, UINT msg, WPARAM wp, LPARAM) override
+	INT_PTR DialogProc(HWND, UINT msg, WPARAM wp, LPARAM lp) override
 	{
 		if (msg == WM_INITDIALOG) {
+			if (russian) {
+				::SetWindowTextW(thisWnd, L"\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0441\u043a\u0438\u043d\u0430");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_CATEGORY_LABEL, L"1. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044e:");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_IMAGE_LABEL, L"2. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435:");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_PREVIEW_GROUP, L"\u041f\u0440\u0435\u0434\u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_REPLACE, L"\u0417\u0430\u043c\u0435\u043d\u0438\u0442\u044c...");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_RESTORE, L"\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_BACKUP_LABEL, L"\u0418\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f \u0441\u043e\u0445\u0440\u0430\u043d\u044f\u044e\u0442\u0441\u044f \u0441\u0440\u0430\u0437\u0443. \u0421\u043e\u0437\u0434\u0430\u044e\u0442\u0441\u044f \u0440\u0435\u0437\u0435\u0440\u0432\u043d\u044b\u0435 \u043a\u043e\u043f\u0438\u0438.");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_BACKGROUND_GROUP, L"\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0444\u043e\u043d\u0430 \u043f\u043b\u0435\u0439\u043b\u0438\u0441\u0442\u0430 / \u0431\u0438\u0431\u043b\u0438\u043e\u0442\u0435\u043a\u0438");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_COLOR_LABEL, L"\u0426\u0432\u0435\u0442 (RRGGBB):");
+				::SetDlgItemTextW(thisWnd, IDC_SKIN_BACKGROUND_SAVE, L"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c");
+				::SetDlgItemTextW(thisWnd, IDCANCEL, L"\u0417\u0430\u043a\u0440\u044b\u0442\u044c");
+			}
 			Scan(L"");
 			std::sort(images.begin(), images.end());
-			for (const auto& image : images) ::SendDlgItemMessageW(thisWnd, IDC_SKIN_IMAGES, LB_ADDSTRING, 0, (LPARAM)image.c_str());
-			::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_ADDSTRING, 0, (LPARAM)L"Playlist");
-			::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_ADDSTRING, 0, (LPARAM)L"Library");
+			const wchar_t* categories[] = {L"All images", L"Backgrounds", L"Buttons and switches", L"Sliders and scrollbars", L"Covers", L"Icons and ratings", L"Other"};
+			const wchar_t* categoriesRu[] = {L"\u0412\u0441\u0435 \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f", L"\u0424\u043e\u043d\u044b", L"\u041a\u043d\u043e\u043f\u043a\u0438 \u0438 \u043f\u0435\u0440\u0435\u043a\u043b\u044e\u0447\u0430\u0442\u0435\u043b\u0438", L"\u041f\u043e\u043b\u0437\u0443\u043d\u043a\u0438 \u0438 \u043f\u0440\u043e\u043a\u0440\u0443\u0442\u043a\u0430", L"\u041e\u0431\u043b\u043e\u0436\u043a\u0438", L"\u0417\u043d\u0430\u0447\u043a\u0438 \u0438 \u043e\u0446\u0435\u043d\u043a\u0438", L"\u0414\u0440\u0443\u0433\u043e\u0435"};
+			for (size_t i = 0; i < 7; ++i) ::SendDlgItemMessageW(thisWnd, IDC_SKIN_CATEGORY, CB_ADDSTRING, 0, (LPARAM)(russian ? categoriesRu[i] : categories[i]));
+			::SendDlgItemMessageW(thisWnd, IDC_SKIN_CATEGORY, CB_SETCURSEL, 1, 0);
+			ShowCategory();
+			::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_ADDSTRING, 0, (LPARAM)(russian ? L"\u041f\u043b\u0435\u0439\u043b\u0438\u0441\u0442" : L"Playlist"));
+			::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_ADDSTRING, 0, (LPARAM)(russian ? L"\u0411\u0438\u0431\u043b\u0438\u043e\u0442\u0435\u043a\u0430" : L"Library"));
 			const wchar_t* modes[] = {L"Crop", L"Stretch", L"Cover", L"Contain"};
-			for (const auto mode : modes) ::SendDlgItemMessageW(thisWnd, IDC_SKIN_MODE, CB_ADDSTRING, 0, (LPARAM)mode);
+			const wchar_t* modesRu[] = {L"\u041e\u0431\u0440\u0435\u0437\u043a\u0430", L"\u0420\u0430\u0441\u0442\u044f\u043d\u0443\u0442\u044c", L"\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c", L"\u0412\u043f\u0438\u0441\u0430\u0442\u044c"};
+			for (size_t i = 0; i < 4; ++i) ::SendDlgItemMessageW(thisWnd, IDC_SKIN_MODE, CB_ADDSTRING, 0, (LPARAM)(russian ? modesRu[i] : modes[i]));
 			::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_SETCURSEL, 0, 0);
 			LoadBackground(); return TRUE;
 		}
@@ -149,7 +234,19 @@ private:
 			case IDC_SKIN_RESTORE: ImageAction(true); return TRUE;
 			case IDC_SKIN_BACKGROUND_SAVE: SaveBackground(); return TRUE;
 			case IDC_SKIN_TARGET: if (HIWORD(wp) == CBN_SELCHANGE) LoadBackground(); return TRUE;
+			case IDC_SKIN_CATEGORY: if (HIWORD(wp) == CBN_SELCHANGE) ShowCategory(); return TRUE;
+			case IDC_SKIN_IMAGES: if (HIWORD(wp) == LBN_SELCHANGE) UpdatePreview(); return TRUE;
 			}
+		}
+		if (msg == WM_DRAWITEM && wp == IDC_SKIN_IMAGE_PREVIEW) {
+			DRAWITEMSTRUCT* item = reinterpret_cast<DRAWITEMSTRUCT*>(lp);
+			::FillRect(item->hDC, &item->rcItem, (HBRUSH)(COLOR_WINDOW + 1));
+			if (preview.IsValid()) {
+				int x = (item->rcItem.right - item->rcItem.left - preview.Width()) / 2;
+				int y = (item->rcItem.bottom - item->rcItem.top - preview.Height()) / 2;
+				preview.Draw(item->hDC, x, y);
+			}
+			return TRUE;
 		}
 		return FALSE;
 	}
@@ -190,11 +287,17 @@ INT_PTR DlgSkin::DialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
 				return TRUE;
 			}
 			{
-				SkinEditor editor(programPath + L"Skin\\" + skinNames[selectedSkin].first + L"\\");
+				SkinEditor editor(programPath + L"Skin\\" + skinNames[selectedSkin].first + L"\\", lang->GetLanguage() == L"Russian");
 				editor.ModalDialog(thisWnd, IDD_DLGSKINEDITOR);
 				if (editor.changed && skinNames[selectedSkin].first == curSkinName && !curSkinPack)
 					OnBnClickedOK();
 			}
+			return TRUE;
+		case IDC_SKIN_INSTALL_FILE:
+			InstallSkin(false);
+			return TRUE;
+		case IDC_SKIN_INSTALL_FOLDER:
+			InstallSkin(true);
 			return TRUE;
 		}
 		return TRUE;
@@ -220,6 +323,11 @@ void DlgSkin::OnInitDialog()
 	::SetDlgItemText(thisWnd, IDC_STATIC_AUTHOR, lang->GetLine(Lang::SkinDialog, 6));
 	::SetDlgItemText(thisWnd, IDC_STATIC_VERSION, lang->GetLine(Lang::SkinDialog, 7));
 	::SetDlgItemText(thisWnd, IDC_STATIC_DESC, lang->GetLine(Lang::SkinDialog, 8));
+	if (lang->GetLanguage() == L"Russian") {
+		::SetDlgItemTextW(thisWnd, IDC_SKIN_EDIT, L"\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c...");
+		::SetDlgItemTextW(thisWnd, IDC_SKIN_INSTALL_FILE, L"\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c...");
+		::SetDlgItemTextW(thisWnd, IDC_SKIN_INSTALL_FOLDER, L"\u0418\u0437 \u043f\u0430\u043f\u043a\u0438...");
+	}
 
 	listSkin = ::GetDlgItem(thisWnd, IDC_LIST_SKIN);
 
@@ -318,6 +426,84 @@ void DlgSkin::OnInitDialog()
 
 		ListView_EnsureVisible(listSkin, current, FALSE);
 	}
+}
+
+// Copy only into a newly created theme directory; never follow links or
+// overwrite an existing skin. A failed copy is left for the user to inspect.
+static bool CopySkinFolder(const std::wstring& source, const std::wstring& target, unsigned depth)
+{
+	if (depth > 32) return false;
+	WIN32_FIND_DATAW fd = {};
+	HANDLE find = ::FindFirstFileW((source + L"\\*").c_str(), &fd);
+	if (find == INVALID_HANDLE_VALUE) return false;
+	bool ok = true;
+	do {
+		std::wstring name = fd.cFileName;
+		if (name == L"." || name == L"..") continue;
+		if (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) { ok = false; break; }
+		std::wstring from = source + L"\\" + name, to = target + L"\\" + name;
+		if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			if (!::CreateDirectoryW(to.c_str(), NULL) || !CopySkinFolder(from, to, depth + 1)) { ok = false; break; }
+		} else if (!::CopyFileW(from.c_str(), to.c_str(), TRUE)) { ok = false; break; }
+	} while (::FindNextFileW(find, &fd));
+	if (ok && ::GetLastError() != ERROR_NO_MORE_FILES) ok = false;
+	::FindClose(find);
+	return ok;
+}
+
+void DlgSkin::InstallSkin(bool folder)
+{
+	FileDialogEx dialog;
+	if (folder) {
+		dialog.SetFolderTitleXP(L"Select the unpacked skin folder");
+		if (!dialog.DoModalFolder(thisWnd)) return;
+	} else {
+		FileDialogEx::FILE_TYPES types[] = {{L"Winyl skin package (*.wzp)", L"*.wzp"}};
+		dialog.SetFileTypes(types, 1);
+		if (!dialog.DoModalFile(thisWnd)) return;
+	}
+	std::wstring source = dialog.GetFile();
+	while (source.size() > 3 && (source.back() == L'\\' || source.back() == L'/')) source.pop_back();
+	std::wstring name = PathEx::FileFromPath(source);
+	if (folder) {
+		DWORD attr = ::GetFileAttributesW(source.c_str());
+		if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY) || (attr & FILE_ATTRIBUTE_REPARSE_POINT) || !FileSystem::Exists(source + L"\\Skin.xml") || !FileSystem::Exists(source + L"\\SkinInfo.xml")) {
+			::MessageBoxW(thisWnd, L"Select a skin folder containing Skin.xml and SkinInfo.xml (not a ZIP file).", L"Install skin", MB_ICONWARNING); return;
+		}
+	} else {
+		std::wstring ext = PathEx::ExtFromFile(name);
+		for (auto& c : ext) if (c >= L'A' && c <= L'Z') c += L'a' - L'A';
+		if (ext != L"wzp") { ::MessageBoxW(thisWnd, L"Select a .wzp file. Extract ZIP files and use Add folder instead.", L"Install skin", MB_ICONWARNING); return; }
+		name = PathEx::NameFromFile(name);
+		ZipFile zip;
+		XmlFile info, window;
+		if (!zip.OpenFile(source) || !info.LoadEx(L"SkinInfo.xml", &zip) || !window.LoadEx(L"Skin.xml", &zip)) {
+			::MessageBoxW(thisWnd, L"This is not a supported Winyl skin package.", L"Install skin", MB_ICONWARNING); return;
+		}
+	}
+	if (name.empty() || name == L"." || name == L"..") return;
+	std::wstring target = programPath + L"Skin\\" + name + (folder ? L"" : L".wzp");
+	// Do not replace either form of an existing skin with the same name.
+	if (FileSystem::Exists(programPath + L"Skin\\" + name) || FileSystem::Exists(programPath + L"Skin\\" + name + L".wzp")) {
+		::MessageBoxW(thisWnd, L"A skin with this name already exists. The existing skin was not changed.", L"Install skin", MB_ICONWARNING); return;
+	}
+	bool ok = folder ? (::CreateDirectoryW(target.c_str(), NULL) && CopySkinFolder(source, target, 0)) : !!::CopyFileW(source.c_str(), target.c_str(), TRUE);
+	if (!ok) {
+		::MessageBoxW(thisWnd, L"Could not install the skin. Check permissions and free space. A partially copied folder may remain in Skin.", L"Install skin", MB_ICONERROR); return;
+	}
+	int skinIndex = (int)skinNames.size();
+	skinNames.push_back(std::make_pair(name, folder ? 0 : 1));
+	std::wstring label = name + (folder ? L"*" : L"");
+	LVITEM item = {};
+	item.mask = LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM;
+	item.iItem = 0; item.iImage = 0; item.lParam = skinIndex;
+	item.pszText = const_cast<wchar_t*>(label.c_str());
+	int row = ListView_InsertItem(listSkin, &item);
+	if (row >= 0) {
+		ListView_SetItemState(listSkin, row, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+		ListView_EnsureVisible(listSkin, row, FALSE);
+	}
+	::MessageBoxW(thisWnd, L"Skin installed. Select Apply to use it.", L"Install skin", MB_ICONINFORMATION);
 }
 
 void DlgSkin::OnBnClickedCancel()

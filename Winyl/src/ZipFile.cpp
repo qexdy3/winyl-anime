@@ -61,6 +61,13 @@ bool ZipFile::OpenFile(const std::wstring& file)
 
 	memcpy(&dirsize, headbuf + 12, 4);
 	memcpy(&diroffset, headbuf + 16, 4);
+	// Skin packages may come from outside the installation. Reject malformed
+	// central directories before allocating or reading their entries.
+	if (dirsize == 0 || dirsize > 16 * 1024 * 1024 || diroffset > filesize - 22 || dirsize > filesize - 22 - diroffset)
+	{
+		zipStream.close();
+		return false;
+	}
 
 	// Central directory
 	zipStream.seekg(diroffset, std::ios::beg);
@@ -69,17 +76,19 @@ bool ZipFile::OpenFile(const std::wstring& file)
 
 	zipStream.read(buffer, dirsize);
 
-	if (zipStream.eof())
+	if (!zipStream)
 	{
 		zipStream.close();
 		delete[] buffer;
 		return false;
 	}
 
-	unsigned int testoffset = 0; // To test the integrity of the archive
+	unsigned long long testoffset = 0; // To test the integrity of the archive
+	bool invalid = false;
 
 	for (unsigned int cursor = 0; cursor < dirsize;)
 	{
+		if (dirsize - cursor < 46 || memcmp(buffer + cursor, "PK\x01\x02", 4) != 0) { invalid = true; break; }
 		unsigned int compmethod = 0; // Compression method
 		unsigned int zipfilesize = 0; // Uncompressed size
 		unsigned int zipfileoffset = 0; // Relative offset of local file header
@@ -100,6 +109,8 @@ bool ZipFile::OpenFile(const std::wstring& file)
 		cursor += 10;
 		memcpy(&zipfileoffset, buffer + cursor, 4);
 		cursor += 4;
+		if (lengthfilename == 0 || lengthfilename > dirsize - cursor || lengthextrafield > dirsize - cursor - lengthfilename || lengthcomment > dirsize - cursor - lengthfilename - lengthextrafield) { invalid = true; break; }
+		if (zipfileoffset > diroffset || diroffset - zipfileoffset < 30 || lengthfilename > diroffset - zipfileoffset - 30 || zipfilesize > diroffset - zipfileoffset - 30 - lengthfilename) { invalid = true; break; }
 
 		std::string zipfile;
 		zipfile.resize(lengthfilename);
@@ -121,7 +132,7 @@ bool ZipFile::OpenFile(const std::wstring& file)
 
 	delete[] buffer;
 
-	if (testoffset != diroffset)
+	if (invalid || testoffset != diroffset)
 	{
 		zipStream.close();
 		zipFiles.clear();

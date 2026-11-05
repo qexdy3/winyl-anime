@@ -56,6 +56,7 @@ private:
 
 	void LoadSkinInfo(const std::wstring& folder, ZipFile* zipFile);
 	void LoadPreview(const std::wstring& file, ZipFile* zipFile);
+	void InstallSkin(bool folder);
 
 
 private: // Messages
