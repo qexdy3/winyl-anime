@@ -1,9 +1,10 @@
-# Winyl 3.3.1 — fixed x86 build
+# Winyl Anime — Tokyo Ghoul Theme & Skin Editor
 
-This repository is a community fork of **Winyl 3.3.1** (the last public release of the
-Winyl audio player by Alex Kras), with a number of long-standing bugs fixed. The
-application is still a **32-bit (x86) Unicode** build and keeps the original Windows XP+
-compatibility (`v141_xp` toolset).
+Make Winyl your own: this community fork of **Winyl 3.3.1** includes a ready-made
+**Tokyo Ghoul anime / dead-inside theme** and an editor for customizing unpacked skins.
+Replace backgrounds, buttons and other images, and adjust playlist and library background
+colors and display modes. The fork also fixes long-standing player bugs. It remains a
+**32-bit (x86) Unicode** build with Windows XP+ compatibility (`v141_xp` toolset).
 
 Original project: <http://winyl-player.com>  
 License: **GNU GPL v3** (see `LICENSE`).
@@ -96,10 +97,12 @@ repository source, not in that historical patch.
 
 ---
 
-# Winyl 3.3.1 — исправленная x86-сборка
+# Winyl Anime — тема Tokyo Ghoul и редактор скинов
 
-Этот репозиторий — форк **Winyl 3.3.1** с исправлением ряда давних ошибок. Программа
-по-прежнему собирается как **32-битное (x86)** приложение с совместимостью с Windows XP+.
+Готовая аниме / «дед-инсайд» тема **Tokyo Ghoul** и возможность самостоятельно
+настраивать оформление: заменять фон, кнопки и другие изображения, выбирать цвет и
+режим фона плейлиста и библиотеки. Это форк **Winyl 3.3.1** с исправлениями ошибок;
+программа по-прежнему собирается как **32-битное (x86)** приложение для Windows XP+.
 
 ## Что исправлено
 
