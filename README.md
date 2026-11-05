@@ -1,151 +1,40 @@
-# Winyl Anime — Tokyo Ghoul Theme & Skin Editor
+# Winyl Anime
 
-## Музыка в аниме-стиле
+Bring a dark anime aesthetic to your music. **Winyl Anime** is a community fork of Winyl 3.3.1 featuring a ready-made Tokyo Ghoul theme and tools for customizing your own skins.
 
-**Winyl Anime** — неофициальная сборка музыкального плеера с готовой тёмной
-темой по мотивам **Tokyo Ghoul**. Канэки на фоне, красные акценты и мрачная
-«дед-инсайд» атмосфера превращают обычный плейлист в часть твоего аниме-сетапа.
+![Tokyo Ghoul theme preview](themes/Tokyo_Ghoul_No_Blue_Icons/Preview.png)
 
-![Предпросмотр темы Tokyo Ghoul](themes/Tokyo_Ghoul_No_Blue_Icons/Preview.png)
+## Features
 
-### Сделай оформление своим
+- **Tokyo Ghoul theme:** Kaneki backgrounds, dark colors and red accents.
+- **Skin editor:** replace backgrounds, buttons and other skin images; adjust playlist and library background colors and display modes.
+- **Clear playback controls:** enabled Repeat, Shuffle and Mute buttons have a visible highlight.
+- **Player fixes:** more reliable button clicks and adaptive backgrounds that stay in place while scrolling.
 
-- **Готовая аниме-тема:** скачай архив темы из [релиза](https://github.com/qexdy3/winyl-anime/releases/tag/v3.3.1-skin-editor), распакуй папку в `Skin` и выбери её в плеере по **F4**.
-- **Свой стиль:** в окне скинов выбери распакованную тему и нажми **Edit...**, чтобы заменить картинки фона, кнопок и других элементов. Там же можно настроить цвет и режим фона плейлиста и библиотеки.
-- **Всё под контролем:** активные Repeat, Shuffle и Mute отмечены яркой полоской, а оригиналы изменённых файлов сохраняются как `.winyl-original`.
+## Download and install
 
-Сборка остаётся **32-битной (x86)**. Для работы исполняемого файла нужны BASS DLL из существующей установки Winyl; архив темы скачивается отдельно. При закрытии редактора текущая тема перезагружается и воспроизведение останавливается.
+1. Download `Winyl_x86.exe` and `Tokyo_Ghoul_No_Blue_Icons.zip` from the [latest release](https://github.com/qexdy3/winyl-anime/releases/tag/v3.3.1-skin-editor).
+2. Use the executable with an existing Winyl installation. It requires the BASS DLLs (`bass.dll`, `bassmix.dll`, `bassasio.dll`, `basswasapi.dll` and `bass_fx.dll`) next to it; these are not included in this repository.
+3. Extract the theme folder into the player's `Skin` folder. In Winyl, press **F4** and select **Tokyo_Ghoul_No_Blue_Icons**.
 
----
+The executable is a **32-bit (x86)** Release build. SHA-256: `0B900F56E2650D84806CABD3847863007EA3AFD312AB21446839C37C32861BCE`.
 
-## English
+## Customize a skin
 
-Make Winyl your own: this community fork of **Winyl 3.3.1** includes a ready-made
-**Tokyo Ghoul anime / dead-inside theme** and an editor for customizing unpacked skins.
-Replace backgrounds, buttons and other images, and adjust playlist and library background
-colors and display modes. The fork also fixes long-standing player bugs. It remains a
-**32-bit (x86) Unicode** build with Windows XP+ compatibility (`v141_xp` toolset).
+Press **F4**, select an unpacked skin and click **Edit...**. Choose an image to replace or restore, or change the playlist and library background color and display mode. Changes are saved immediately, and original files are kept alongside them with the `.winyl-original` extension.
 
-Original project: <http://winyl-player.com>  
-License: **GNU GPL v3** (see `LICENSE`).
-
-## Fixed in this fork
-
-### 1. Buttons (including Repeat) ignoring clicks
-
-The original code could get a button permanently stuck in the "pressed" state if the
-matching `WM_LBUTTONUP` was lost (mouse capture taken by another window, minimization,
-a modal dialog, drag & drop, etc.). The stuck element then consumed the next click, which
-is why **Repeat, Shuffle, Mute, Next/Prev and other controls sometimes did nothing**.
-
-* `SkinDraw::ResetPress()` releases all stale pressed elements before a new press.
-* `SkinDraw::MouseUp()` now performs an action only for the element that was actually
-  pressed by the last `MouseDown`; all other stale elements are released silently.
-* A **double click** on a button is delivered by Windows as `WM_LBUTTONDBLCLK` instead of
-  the second `WM_LBUTTONDOWN`. The old handler dropped it, so every second quick click on
-  a button was lost. Both `WinylWnd::OnLButtonDblClk` and `SkinAlpha::OnLButtonDblClk`
-  now process it as a normal button press.
-
-### 2. Playlist / Library background
-
-New optional, backward-compatible attributes for the `<Background>` element of the
-playlist (`Playlist.xml`) and library (`Library.xml`) skins:
-
-```xml
-<Background File="Background\image.png" Stretch="1" />  <!-- stretch to viewport -->
-<Background File="Background\image.png" Cover="1" />    <!-- fill, keep aspect ratio -->
-<Background File="Background\image.png" Contain="1" />  <!-- fit whole image -->
-```
-
-Priority: `Contain` → `Cover` → `Stretch` → legacy `Crop`. When one of the new modes is
-used, scrolling repaints the viewport instead of blitting already painted pixels, so the
-wallpaper no longer drifts while the list scrolls.
-
-### 3. Visible toggle state and skin editor
-
-Repeat, Shuffle and Mute show a bright underline when enabled, including during
-hover animations. Skin authors can set the accent in the corresponding window
-XML with `<Highlight Color="ff3d3d" />` under `<Window>`.
-
-Open **Skin** (F4), select an unpacked skin and click **Edit...**. The editor
-can replace background, button and other PNG/BMP/JPEG images and restore the
-original images. It also edits the playlist and library background color and
-Crop/Stretch/Cover/Contain mode. Image replacements and background settings
-are saved immediately; original files are preserved alongside them as
-`.winyl-original` backups. Apply the skin to see changes; editing the current
-skin reloads it on closing the editor and stops playback. Packed `.wzp` skins
-must first be extracted into a folder in `Skin` and the Skin dialog reopened.
-
-### Ready-made Tokyo Ghoul theme
-
-The anime / dead-inside theme is in
-[`themes/Tokyo_Ghoul_No_Blue_Icons`](themes/Tokyo_Ghoul_No_Blue_Icons).
-Copy that folder into the player's `Skin` directory and select it in the Skin
-dialog. Artwork and names may be subject to their respective owners' rights.
-
-## Download
-
-A ready-to-use 32-bit executable is provided in [`dist/Winyl_x86.exe`](dist/Winyl_x86.exe)
-and as a [release asset](https://github.com/qexdy3/winyl-anime/releases/tag/v3.3.1-skin-editor).
-
-* File version: 3.3.1.0
-* Size: 2 435 584 bytes
-* SHA-256: `0B900F56E2650D84806CABD3847863007EA3AFD312AB21446839C37C32861BCE`
-
-The player needs the BASS audio libraries (`bass.dll`, `bassmix.dll`, `bassasio.dll`,
-`basswasapi.dll`, `bass_fx.dll`) next to `Winyl.exe`. They are not included in this
-repository; use the DLLs from your existing Winyl installation (or the official
-Winyl/BASS distributions).
+Packed `.wzp` skins must first be extracted into a folder inside `Skin`; reopen the skin dialog afterwards. Closing the editor reloads the active skin and stops playback.
 
 ## Build
 
-Requirements: Visual Studio 2017 with C++ Windows XP support, platform toolset
-`v141_xp`, 32-bit (`Win32`). See [`BUILD.md`](BUILD.md) for the third-party libraries
-(SQLite, TagLib, zlib, pugixml, BASS headers).
+Build `Winyl.sln` using Visual Studio 2017 with C++ Windows XP support and the `v141_xp` toolset:
 
 ```bat
 msbuild Winyl.sln /p:Configuration=Release /p:Platform=x86
 ```
 
-Output: `Release\Winyl.exe`.
+The output is `Release\Winyl.exe`. See [BUILD.md](BUILD.md) for dependencies. The historical [patch](Winyl_3.3.1_fixes.patch) contains the earlier button and background fixes; the current source also includes the skin editor and toggle indicators.
 
-## Patches
+## Credits and license
 
-[`Winyl_3.3.1_fixes.patch`](Winyl_3.3.1_fixes.patch) contains the earlier
-button and background fixes. The skin editor and toggle indicator are in the
-repository source, not in that historical patch.
-
----
-
-# Winyl Anime — тема Tokyo Ghoul и редактор скинов
-
-Готовая аниме / «дед-инсайд» тема **Tokyo Ghoul** и возможность самостоятельно
-настраивать оформление: заменять фон, кнопки и другие изображения, выбирать цвет и
-режим фона плейлиста и библиотеки. Это форк **Winyl 3.3.1** с исправлениями ошибок;
-программа по-прежнему собирается как **32-битное (x86)** приложение для Windows XP+.
-
-## Что исправлено
-
-1. **Кнопки (включая Repeat) иногда не срабатывали.** Потерянный `WM_LBUTTONUP`
-   оставлял кнопку «зажатой», и следующий клик поглощался. Кроме того, второй быстрый
-   клик приходил как `WM_LBUTTONDBLCLK` и полностью игнорировался. Теперь залипшие
-   элементы сбрасываются, действие выполняет только реально нажатая кнопка, а двойной
-   клик обрабатывается как новое нажатие.
-2. **Фон плейлиста и библиотеки.** Добавлены необязательные атрибуты `Stretch`, `Cover`
-   и `Contain` у `<Background>`; при их использовании фон больше не «уезжает» при
-   прокрутке. Старые скины работают как раньше.
-3. **Индикатор режима.** Включённые Repeat, Shuffle и Mute выделены яркой полоской.
-4. **Редактор скинов и тем.** Нажмите F4, выберите распакованный скин и нажмите
-   **Edit...**. Можно заменить изображения фона, кнопок и других элементов, восстановить
-   оригиналы и настроить цвет и режим фона плейлиста и библиотеки. Изменения сохраняются
-   сразу, копии оригиналов получают расширение `.winyl-original`. При закрытии редактора
-   текущий скин перезагружается, воспроизведение останавливается. Архив `.wzp` сначала
-   нужно распаковать в отдельную папку внутри `Skin` и заново открыть окно выбора скина.
-
-**Готовая аниме / дед-инсайд тема Tokyo Ghoul:**
-[`themes/Tokyo_Ghoul_No_Blue_Icons`](themes/Tokyo_Ghoul_No_Blue_Icons).
-Скопируйте папку темы в `Skin` установленного плеера и выберите её по F4.
-Права на персонажей и изображения могут принадлежать их правообладателям.
-
-Готовая 32-битная сборка: [`dist/Winyl_x86.exe`](dist/Winyl_x86.exe)
-(SHA-256 `0B900F56E2650D84806CABD3847863007EA3AFD312AB21446839C37C32861BCE`).
+Based on Winyl 3.3.1 by Alex Kras. The player source is licensed under the [GNU GPL v3](LICENSE). Tokyo Ghoul names and artwork may belong to their respective rights holders.
