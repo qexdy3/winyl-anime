@@ -1,5 +1,25 @@
 # Winyl Anime — Tokyo Ghoul Theme & Skin Editor
 
+## Музыка в аниме-стиле
+
+**Winyl Anime** — неофициальная сборка музыкального плеера с готовой тёмной
+темой по мотивам **Tokyo Ghoul**. Канэки на фоне, красные акценты и мрачная
+«дед-инсайд» атмосфера превращают обычный плейлист в часть твоего аниме-сетапа.
+
+![Предпросмотр темы Tokyo Ghoul](themes/Tokyo_Ghoul_No_Blue_Icons/Preview.png)
+
+### Сделай оформление своим
+
+- **Готовая аниме-тема:** скачай архив темы из [релиза](https://github.com/qexdy3/winyl-anime/releases/tag/v3.3.1-skin-editor), распакуй папку в `Skin` и выбери её в плеере по **F4**.
+- **Свой стиль:** в окне скинов выбери распакованную тему и нажми **Edit...**, чтобы заменить картинки фона, кнопок и других элементов. Там же можно настроить цвет и режим фона плейлиста и библиотеки.
+- **Всё под контролем:** активные Repeat, Shuffle и Mute отмечены яркой полоской, а оригиналы изменённых файлов сохраняются как `.winyl-original`.
+
+Сборка остаётся **32-битной (x86)**. Для работы исполняемого файла нужны BASS DLL из существующей установки Winyl; архив темы скачивается отдельно. При закрытии редактора текущая тема перезагружается и воспроизведение останавливается.
+
+---
+
+## English
+
 Make Winyl your own: this community fork of **Winyl 3.3.1** includes a ready-made
 **Tokyo Ghoul anime / dead-inside theme** and an editor for customizing unpacked skins.
 Replace backgrounds, buttons and other images, and adjust playlist and library background
