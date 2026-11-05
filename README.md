@@ -42,7 +42,8 @@ wallpaper no longer drifts while the list scrolls.
 
 ## Download
 
-A ready-to-use 32-bit executable is provided in [`dist/Winyl_x86.exe`](dist/Winyl_x86.exe).
+A ready-to-use 32-bit executable is provided in [`dist/Winyl_x86.exe`](dist/Winyl_x86.exe)
+and as a [release asset](https://github.com/qexdy3/winyl-3.3.1-fixed/releases/tag/v3.3.1-fixed).
 
 * File version: 3.3.1.0
 * Size: 2 417 152 bytes
