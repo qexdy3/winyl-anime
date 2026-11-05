@@ -1,0 +1,444 @@
+diff --git a/Winyl/src/SkinAlpha.cpp b/Winyl/src/SkinAlpha.cpp
+index 2659bd5..add2fa9 100644
+--- a/Winyl/src/SkinAlpha.cpp
++++ b/Winyl/src/SkinAlpha.cpp
+@@ -236,7 +236,11 @@ void SkinAlpha::OnLButtonUp(UINT nFlags, CPoint point)
+ 
+ void SkinAlpha::OnLButtonDblClk(UINT nFlags, CPoint point)
+ {
+-	if (!skinDraw.IsClickElement())
++	// See WinylWnd::OnLButtonDblClk: process the second click of a double click
++	// as a normal button press instead of dropping it.
++	if (skinDraw.IsClickElement())
++		OnLButtonDown(nFlags, point);
++	else
+ 		::SendMessage(wndParent, UWM_MINIPLAYER, 1, 0);
+ }
+ 
+diff --git a/Winyl/src/SkinDraw.cpp b/Winyl/src/SkinDraw.cpp
+index cf3091a..493fe9b 100644
+--- a/Winyl/src/SkinDraw.cpp
++++ b/Winyl/src/SkinDraw.cpp
+@@ -764,8 +764,35 @@ void SkinDraw::MouseLeave()
+ 	}
+ }
+ 
++void SkinDraw::ResetPress()
++{
++	pressElement = nullptr;
++
++	for (std::size_t i = 0, isize = layouts.size(); i < isize; ++i)
++	{
++		for (std::size_t j = 0, jsize = layouts[i]->elements.size(); j < jsize; ++j)
++		{
++			SkinElement* element = layouts[i]->elements[j]->element.get();
++
++			// A button can stay pressed forever if its WM_LBUTTONUP was lost
++			// (the window lost the mouse capture, was minimized, a modal dialog
++			// appeared, etc.). Such a stale element would consume the next click.
++			if (element->IsPress())
++			{
++				element->isPress = false;
++
++				if (!element->IsHidden() && element->IsRedrawPress())
++					RedrawElement(element);
++			}
++		}
++	}
++}
++
+ SkinElement* SkinDraw::MouseDown(unsigned flags, CPoint& point)
+ {
++	// Never start a new press with a stale pressed element from a previous click.
++	ResetPress();
++
+ 	for (std::size_t i = 0, isize = layouts.size(); i < isize; ++i)
+ 	{
+ 		if (layouts[i]->IsHidden())
+@@ -813,6 +840,12 @@ SkinElement* SkinDraw::MouseDown(unsigned flags, CPoint& point)
+ 
+ SkinElement* SkinDraw::MouseUp(unsigned flags, CPoint& point)
+ {
++	// Only the element pressed by our last MouseDown may perform an action.
++	// Other elements can still report themselves as pressed if their
++	// WM_LBUTTONUP was lost; they must be released silently.
++	SkinElement* pressedElement = pressElement;
++	pressElement = nullptr;
++
+ 	for (std::size_t i = 0, isize = layouts.size(); i < isize; ++i)
+ 	{
+ 		if (layouts[i]->IsHidden())
+@@ -824,12 +857,15 @@ SkinElement* SkinDraw::MouseUp(unsigned flags, CPoint& point)
+ 
+ 			element = layouts[i]->elements[j]->element->OnButtonUp(flags, point);
+ 
+-//			if (pressElement && pressElement != element)
+-//				element = nullptr;
+-
+ 			if (element)
+ 			{
+-				pressElement = nullptr;
++				if (element != pressedElement)
++				{
++					// Stale press: just restore its normal look, no action.
++					if (!element->IsHidden() && element->IsRedrawPress())
++						RedrawElement(element);
++					continue;
++				}
+ 
+ 				// Do not redraw when a new window is appear (it redraw itself on mouse leave)
+ 				if (element->type != SkinElement::Type::Equalizer)
+@@ -861,7 +897,6 @@ SkinElement* SkinDraw::MouseUp(unsigned flags, CPoint& point)
+ 		}
+ 	}
+ 
+-	pressElement = nullptr;
+ 	return nullptr;
+ }
+ 
+diff --git a/Winyl/src/SkinDraw.h b/Winyl/src/SkinDraw.h
+index 6e7eea2..f196768 100644
+--- a/Winyl/src/SkinDraw.h
++++ b/Winyl/src/SkinDraw.h
+@@ -54,6 +54,10 @@ public:
+ 
+ 	void MouseLeave();
+ 
++	// Clear the pressed state of every element. Used to recover from a lost
++	// WM_LBUTTONUP, which otherwise leaves a button "stuck" and swallows clicks.
++	void ResetPress();
++
+ 	//inline bool IsLayered() {return isLayered;}
+ 	inline bool IsAeroGlass() {return isAeroGlass;}
+ 	inline bool IsLayeredAlpha() {return isLayeredAlpha;}
+diff --git a/Winyl/src/SkinList.cpp b/Winyl/src/SkinList.cpp
+index de99b94..60c6321 100644
+--- a/Winyl/src/SkinList.cpp
++++ b/Winyl/src/SkinList.cpp
+@@ -607,7 +607,55 @@ void SkinList::OnPaint(HDC dc, PAINTSTRUCT& ps)
+ 	::SetBkMode(dcMemory, TRANSPARENT);
+ 
+ 	if (imageBack.IsValid())
+-		imageBack.Crop(dcMemory, 0, 0, rc.Width(), rc.Height()); // Draw background image
++	{
++		// Draw relative to the ENTIRE list viewport, not the invalidated paint
++		// rectangle. This keeps the image stationary during scrolling / redraw.
++		CRect client;
++		::GetClientRect(thisWnd, client);
++		const int clientW = client.Width();
++		const int clientH = client.Height();
++		if (clientW > 0 && clientH > 0)
++		{
++			if (backContain && imageBack.Width() > 0 && imageBack.Height() > 0)
++			{
++				// Fit the ENTIRE image within the list viewport (CSS background-size: contain).
++				// The underlying backColor fills the empty letterbox bars.
++				int drawW = clientW;
++				int drawH = clientH;
++				if ((long long)clientW * imageBack.Height() <= (long long)clientH * imageBack.Width())
++					drawH = (int)((long long)clientW * imageBack.Height() / imageBack.Width());
++				else
++					drawW = (int)((long long)clientH * imageBack.Width() / imageBack.Height());
++				const int x = (clientW - drawW) / 2 - rc.left;
++				const int y = (clientH - drawH) / 2 - rc.top;
++				imageBack.Draw(dcMemory, x, y, drawW, drawH);
++			}
++			else if (backCover && imageBack.Width() > 0 && imageBack.Height() > 0)
++			{
++				// Preserve aspect ratio and fill the viewport (CSS background-size: cover).
++				// Cropping is centered. The destination bitmap clips the overscan.
++				int drawW = clientW;
++				int drawH = clientH;
++				if ((long long)clientW * imageBack.Height() > (long long)clientH * imageBack.Width())
++					drawH = (int)((long long)clientW * imageBack.Height() / imageBack.Width());
++				else
++					drawW = (int)((long long)clientH * imageBack.Width() / imageBack.Height());
++				const int x = (clientW - drawW) / 2 - rc.left;
++				const int y = (clientH - drawH) / 2 - rc.top;
++				imageBack.Draw(dcMemory, x, y, drawW, drawH);
++			}
++			else if (backStretch)
++			{
++				// Stretch to the full viewport, including on window resize.
++				imageBack.Draw(dcMemory, -rc.left, -rc.top, clientW, clientH);
++			}
++			else
++			{
++				// Original Winyl behaviour for existing skins.
++				imageBack.Crop(dcMemory, 0, 0, rc.Width(), rc.Height());
++			}
++		}
++	}
+ 
+ 	CRect rc2;
+ 	::GetClientRect(thisWnd, rc2);
+@@ -1586,6 +1634,23 @@ void SkinList::ResetScrollBar()
+     }
+ }
+ 
++void SkinList::ScrollWindowStep(int dy)
++{
++	if (imageBack.IsValid() && (backStretch || backCover || backContain))
++	{
++		// The wallpaper is anchored to the viewport. ScrollWindowEx would shift
++		// the already painted pixels and make the image drift, so repaint the
++		// whole control and let OnPaint draw both nodes and background again.
++		::InvalidateRect(thisWnd, NULL, FALSE);
++	}
++	else
++	{
++		::ScrollWindowEx(thisWnd, 0, dy, NULL, NULL, NULL, NULL, SW_INVALIDATE);
++	}
++
++	::UpdateWindow(thisWnd);
++}
++
+ void SkinList::OnVScroll(UINT nSBCode, UINT nPos, HWND hScrollBar)
+ {
+ 	int oldPos = HScrollMessageGetPosOld();
+@@ -1593,8 +1658,7 @@ void SkinList::OnVScroll(UINT nSBCode, UINT nPos, HWND hScrollBar)
+ 	{
+ 		StopSmoothScroll();
+ 
+-		::ScrollWindowEx(thisWnd, 0, oldPos - HScrollGetPos(), NULL, NULL, NULL, NULL, SW_INVALIDATE);
+-		::UpdateWindow(thisWnd);
++		ScrollWindowStep(oldPos - HScrollGetPos());
+ 	}
+ }
+ 
+@@ -1726,8 +1790,7 @@ void SkinList::MouseWheel(bool isReverse)
+ 		int oldPos = HScrollGetPos();
+ 		if (HScrollSetPos(HScrollGetPos() + scroll))
+ 		{
+-			::ScrollWindowEx(thisWnd, 0, oldPos - HScrollGetPos(), NULL, NULL, NULL, NULL, SW_INVALIDATE);
+-			::UpdateWindow(thisWnd);
++			ScrollWindowStep(oldPos - HScrollGetPos());
+ 		}
+ 	}
+ 	else
+@@ -1793,12 +1856,7 @@ void SkinList::SmoothScrollRun()
+ 	int oldPos = HScrollGetPos();
+ 	if (HScrollSetPos(HScrollGetPos() + smoothScrollAcc))
+ 	{
+-		::ScrollWindowEx(thisWnd, 0, oldPos - HScrollGetPos(), NULL, NULL, NULL, NULL, SW_INVALIDATE);
+-		// http://stackoverflow.com/questions/17277622/dwm-in-win7-8-gdi
+-		// Test: redraw main window for smoother scrolling
+-		//if (futureWin->IsVistaOrLater() && futureWin->IsCompositionEnabled())
+-		//	::InvalidateRect(thisParentWnd, NULL, FALSE);
+-		::UpdateWindow(thisWnd);
++		ScrollWindowStep(oldPos - HScrollGetPos());
+ 	}
+ 
+ 	if ((smoothScrollAcc > 0 && HScrollGetPos() >= smoothScrollNew) ||
+@@ -2654,6 +2712,15 @@ bool SkinList::LoadSkin(std::wstring& file, ZipFile* zipFile)
+ 			XmlNode xmlBackground = xmlMain.FirstChild("Background");
+ 			if (xmlBackground)
+ 			{
++				// Optional, backward-compatible skin properties.
++				// Contain="1": show whole image; Cover="1": fill without distortion;
++				// Stretch="1": fill with distortion. Missing flags retain old Crop behavior.
++				backStretch = false;
++				backCover = false;
++				backContain = false;
++				xmlBackground.Attribute("Stretch", &backStretch);
++				xmlBackground.Attribute("Cover", &backCover);
++				xmlBackground.Attribute("Contain", &backContain);
+ 				const char* color = xmlBackground.AttributeRaw("Color");
+ 				if (color && strlen(color) == 6)
+ 				{
+diff --git a/Winyl/src/SkinList.h b/Winyl/src/SkinList.h
+index edac639..04959d1 100644
+--- a/Winyl/src/SkinList.h
++++ b/Winyl/src/SkinList.h
+@@ -275,7 +275,10 @@ private:
+ 	bool isLeftOver = false; // Left pane overlap tracks?
+ 	bool isRightOver = false; // Right pane overlap tracks?
+ 
+-	ExImage imageBack; // Background image (expiremental)
++	ExImage imageBack; // Background image
++	bool backStretch = false; // Opt-in: scale background to the full list client rect
++	bool backCover = false;   // Opt-in: aspect-preserving fill (overrides Stretch)
++	bool backContain = false; // Opt-in: show complete image with letterboxing (overrides Cover/Stretch)
+ 
+ 	std::vector<ListNodeUnsafe> visibleNodes;
+ 
+@@ -311,6 +314,7 @@ private: // Messages
+ 	void OnSize(UINT nType, int cx, int cy);
+ 	void OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+ 	void OnVScroll(UINT nSBCode, UINT nPos, HWND hScrollBar);
++	void ScrollWindowStep(int dy);
+ 	void OnLButtonDown(UINT nFlags, CPoint point);
+ 	void OnLButtonUp(UINT nFlags, CPoint point);
+ 	void OnLButtonDblClk(UINT nFlags, CPoint point);
+diff --git a/Winyl/src/SkinTree.cpp b/Winyl/src/SkinTree.cpp
+index 8f444e8..c059587 100644
+--- a/Winyl/src/SkinTree.cpp
++++ b/Winyl/src/SkinTree.cpp
+@@ -502,12 +502,56 @@ void SkinTree::OnPaint(HDC dc, PAINTSTRUCT& ps)
+ 
+ 	::SetBkMode(dcMemory, TRANSPARENT);
+ 
+-	if (imageBack.IsValid())
+-		imageBack.Crop(dcMemory, 0, 0, rc.Width(), rc.Height()); // Draw background image
+-
+ 	CRect rc2;
+ 	::GetClientRect(thisWnd, rc2);
+ 
++	if (imageBack.IsValid())
++	{
++		const int clientW = rc2.Width();
++		const int clientH = rc2.Height();
++
++		if (clientW > 0 && clientH > 0)
++		{
++			if (backContain && imageBack.Width() > 0 && imageBack.Height() > 0)
++			{
++				// Fit the entire image inside the library viewport.
++				int drawW = clientW;
++				int drawH = clientH;
++				if ((long long)clientW * imageBack.Height() <= (long long)clientH * imageBack.Width())
++					drawH = (int)((long long)clientW * imageBack.Height() / imageBack.Width());
++				else
++					drawW = (int)((long long)clientH * imageBack.Width() / imageBack.Height());
++				const int x = (clientW - drawW) / 2 - rc.left;
++				const int y = (clientH - drawH) / 2 - rc.top;
++				imageBack.Draw(dcMemory, x, y, drawW, drawH);
++			}
++			else if (backCover && imageBack.Width() > 0 && imageBack.Height() > 0)
++			{
++				// Preserve the aspect ratio and fill the whole viewport.
++				int drawW = clientW;
++				int drawH = clientH;
++				if ((long long)clientW * imageBack.Height() > (long long)clientH * imageBack.Width())
++					drawH = (int)((long long)clientW * imageBack.Height() / imageBack.Width());
++				else
++					drawW = (int)((long long)clientH * imageBack.Width() / imageBack.Height());
++				const int x = (clientW - drawW) / 2 - rc.left;
++				const int y = (clientH - drawH) / 2 - rc.top;
++				imageBack.Draw(dcMemory, x, y, drawW, drawH);
++			}
++			else if (backStretch)
++			{
++				// Stretch across the entire library client area, not just the invalidated region.
++				// Offset compensates for partial repaints and keeps the wallpaper stationary.
++				imageBack.Draw(dcMemory, -rc.left, -rc.top, clientW, clientH);
++			}
++			else
++			{
++				// Legacy behavior for all existing skins.
++				imageBack.Crop(dcMemory, 0, 0, rc.Width(), rc.Height());
++			}
++		}
++	}
++
+ 	// Recursively draw all nodes
+ 	if (isControlRedraw)
+ 	{
+@@ -1026,6 +1070,23 @@ void SkinTree::ResetScrollBar()
+     }
+ }
+ 
++void SkinTree::ScrollWindowStep(int dy)
++{
++	if (imageBack.IsValid() && (backStretch || backCover || backContain))
++	{
++		// The wallpaper is anchored to the viewport. ScrollWindowEx would shift
++		// the already painted pixels and make the image drift, so repaint the
++		// whole control and let OnPaint draw both nodes and background again.
++		::InvalidateRect(thisWnd, NULL, FALSE);
++	}
++	else
++	{
++		::ScrollWindowEx(thisWnd, 0, dy, NULL, NULL, NULL, NULL, SW_INVALIDATE);
++	}
++
++	::UpdateWindow(thisWnd);
++}
++
+ void SkinTree::OnVScroll(UINT nSBCode, UINT nPos, HWND hScrollBar)
+ {
+ 	int oldPos = HScrollMessageGetPosOld();
+@@ -1033,8 +1094,7 @@ void SkinTree::OnVScroll(UINT nSBCode, UINT nPos, HWND hScrollBar)
+ 	{
+ 		StopSmoothScroll();
+ 
+-		::ScrollWindowEx(thisWnd, 0, oldPos - HScrollGetPos(), NULL, NULL, NULL, NULL, SW_INVALIDATE);
+-		::UpdateWindow(thisWnd);
++		ScrollWindowStep(oldPos - HScrollGetPos());
+ 	}
+ }
+ 
+@@ -1124,8 +1184,7 @@ void SkinTree::MouseWheel(bool isReverse)
+ 		int oldPos = HScrollGetPos();
+ 		if (HScrollSetPos(HScrollGetPos() + scroll))
+ 		{
+-			::ScrollWindowEx(thisWnd, 0, oldPos - HScrollGetPos(), NULL, NULL, NULL, NULL, SW_INVALIDATE);
+-			::UpdateWindow(thisWnd);
++			ScrollWindowStep(oldPos - HScrollGetPos());
+ 		}
+ 	}
+ 	else
+@@ -1190,8 +1249,7 @@ void SkinTree::SmoothScrollRun()
+ 	int oldPos = HScrollGetPos();
+ 	if (HScrollSetPos(HScrollGetPos() + smoothScrollAcc))
+ 	{
+-		::ScrollWindowEx(thisWnd, 0, oldPos - HScrollGetPos(), NULL, NULL, NULL, NULL, SW_INVALIDATE);
+-		::UpdateWindow(thisWnd);
++		ScrollWindowStep(oldPos - HScrollGetPos());
+ 	}
+ 
+ 	if ((smoothScrollAcc > 0 && HScrollGetPos() >= smoothScrollNew) ||
+@@ -1840,6 +1898,12 @@ bool SkinTree::LoadSkin(std::wstring& file, ZipFile* zipFile)
+ 
+ 			if (xmlBackground)
+ 			{
++				backStretch = false;
++				backCover = false;
++				backContain = false;
++				xmlBackground.Attribute("Stretch", &backStretch);
++				xmlBackground.Attribute("Cover", &backCover);
++				xmlBackground.Attribute("Contain", &backContain);
+ 				const char* color = xmlBackground.AttributeRaw("Color");
+ 				if (color && strlen(color) == 6)
+ 				{
+diff --git a/Winyl/src/SkinTree.h b/Winyl/src/SkinTree.h
+index b3c0526..3547144 100644
+--- a/Winyl/src/SkinTree.h
++++ b/Winyl/src/SkinTree.h
+@@ -125,6 +125,9 @@ private:
+ 	bool isPressElement = false;
+ 
+ 	ExImage imageBack;
++	bool backStretch = false;
++	bool backCover = false;
++	bool backContain = false;
+ 	unsigned dropColor = 0x00000000;
+ 
+ 	bool isHeadUpperCase = false;
+@@ -194,6 +197,7 @@ private: // Messages
+ 	void OnSize(UINT nType, int cx, int cy);
+ 	void OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+ 	void OnVScroll(UINT nSBCode, UINT nPos, HWND hScrollBar);
++	void ScrollWindowStep(int dy);
+ 	void OnLButtonDown(UINT nFlags, CPoint point);
+ 	void OnLButtonUp(UINT nFlags, CPoint point);
+ 	void OnLButtonDblClk(UINT nFlags, CPoint point);
+diff --git a/Winyl/src/WinylWnd.cpp b/Winyl/src/WinylWnd.cpp
+index 5da9295..c8cd094 100644
+--- a/Winyl/src/WinylWnd.cpp
++++ b/Winyl/src/WinylWnd.cpp
+@@ -1170,7 +1170,13 @@ void WinylWnd::OnLButtonUp(UINT nFlags, CPoint point)
+ 
+ void WinylWnd::OnLButtonDblClk(UINT nFlags, CPoint point)
+ {
+-	if (!skinDraw.IsClickElement())
++	// A double click on a control arrives as WM_LBUTTONDBLCLK instead of the
++	// second WM_LBUTTONDOWN, so the old code silently swallowed it. That made
++	// buttons (Repeat, Next, Mute, ...) ignore every second quick click.
++	// Treat the double click as a fresh press of the control under the mouse.
++	if (skinDraw.IsClickElement())
++		OnLButtonDown(nFlags, point);
++	else
+ 		MiniPlayer(true);
+ }
+ 
