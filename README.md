@@ -2,7 +2,7 @@
 
 **Winyl Anime** is a Windows music player and audio media player based on Winyl 3.3.1. This community fork combines music playback with a ready-made Tokyo Ghoul anime theme and an editor for customizing skins, backgrounds and buttons.
 
-![Tokyo Ghoul theme preview](themes/Tokyo_Ghoul_No_Blue_Icons/Preview.png)
+![Winyl Anime music player with the Tokyo Ghoul theme](docs/images/winyl-anime-screenshot.png)
 
 ## Features
 
