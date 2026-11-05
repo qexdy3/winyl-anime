@@ -10,7 +10,6 @@
 - **Skin editor:** browse images by category, preview and replace backgrounds, buttons, covers and other elements, and adjust playlist and library backgrounds.
 - **Easy installation:** install the player with the theme included, then add `.wzp` skins or unpacked skin folders from the skin dialog.
 - **Clear playback controls:** enabled Repeat, Shuffle and Mute buttons have a visible highlight.
-- **Player fixes:** more reliable button clicks and adaptive backgrounds that stay in place while scrolling.
 
 ## Download and install
 
@@ -40,7 +39,7 @@ Build `Winyl.sln` using Visual Studio 2017 with C++ Windows XP support and the `
 msbuild Winyl.sln /p:Configuration=Release /p:Platform=x86
 ```
 
-The output is `Release\Winyl.exe`. See [BUILD.md](BUILD.md) for dependencies. To build the installer, use Inno Setup 5.6.1 and `installer/build-installer.ps1` with paths to the compiler and an existing Winyl runtime containing the audio libraries, languages and bundled skins. The historical [patch](Winyl_3.3.1_fixes.patch) contains the earlier button and background fixes; the current source also includes the skin editor and toggle indicators.
+The output is `Release\Winyl.exe`. See [BUILD.md](BUILD.md) for dependencies. To build the installer, use Inno Setup 5.6.1 and `installer/build-installer.ps1` with paths to the compiler and an existing Winyl runtime containing the audio libraries, languages and bundled skins.
 
 ## Credits and license
 
