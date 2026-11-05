@@ -107,6 +107,10 @@ public:
 	CRect rcRect = {0, 0, 0, 0};
 	std::wstring skinName;
 
+	// Accent color used to mark an enabled toggle (repeat, shuffle, mute).
+	// Can be overridden by the <Highlight Color="RRGGBB" /> node in Skin.xml.
+	COLORREF stateHighlight = RGB(255, 61, 61);
+
 	virtual bool LoadSkin(const std::wstring& file, ZipFile* zipFile); // Load element skin
 	virtual void Draw(HDC dc, bool isAlpha); // Draw element
 	virtual bool DrawFade(HDC dc, bool isAlpha); // Draw one frame of animation

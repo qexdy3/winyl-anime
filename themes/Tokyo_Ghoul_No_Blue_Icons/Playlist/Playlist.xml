@@ -1,0 +1,124 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Playlist>
+    <DropLine Color="cc909b" />
+    <FontNoItems Color="a18b91" />
+    <Scroll File="..\Scroll\Scroll.xml" />
+    <Background Color="100b10" File="..\Background\Kaneki_Adaptive.png" Cover="1" />
+    <Head Height="30">
+        <Elements>
+            <ArtistAlbum>
+                <Position Left="6" Top="7" Right="50" />
+                <Font Name="Arial" Size="11" Color="a18b91" Color2="6495ED" Bold="1" />
+            </ArtistAlbum>
+            <Year>
+                <Position Right="6" Top="7" />
+                <Font Name="Arial" Size="11" Color="c4b8bc" Bold="1" />
+            </Year>
+        </Elements>
+        <Background>
+            <Fill>
+                <Position Left="6" Right="6" Bottom="4" Height="1" />
+                <Fill Color="a18b91" />
+            </Fill>
+        </Background>
+    </Head>
+    <Song Height="21">
+        <Elements>
+            <Number>
+                <Position Left="10" Width="14" Top="3" />
+                <State Stop="1" Focus="1" Select="1" Library="1">
+                    <Font Size="9" Color="f8e9ed" Align="2" />
+                </State>
+                <State Stop="1" Library="1">
+                    <Font Size="9" Color="a18b91" Align="2" />
+                </State>
+            </Number>
+            <Title>
+                <Position Left="28" Top="3" Right="130" />
+                <State Focus="1" Select="1" Library="1">
+                    <Font Size="9" Color="f8e9ed" />
+                </State>
+                <State Play="1" Pause="1" Library="1">
+                    <Font Size="9" Color="f8e9ed" />
+                </State>
+                <State Normal="1" Library="1">
+                    <Font Size="9" Color="c4b8bc" />
+                </State>
+            </Title>
+            <Index>
+                <Position Left="10" Width="20" Top="3" />
+                <State Stop="1" Focus="1" Select="1" Playlist="1">
+                    <Font Color="f8e9ed" Align="2" />
+                </State>
+                <State Stop="1" Playlist="1">
+                    <Font Color="a18b91" Align="2" />
+                </State>
+            </Index>
+            <ArtistTitle>
+                <Position Left="36" Top="3" Right="130" />
+                <State Play="1" Pause="1" Playlist="1">
+                    <Font Size="9" Color="f8e9ed" />
+                </State>
+                <State Normal="1" Playlist="1">
+                    <Font Size="9" Color="c4b8bc" />
+                </State>
+                <State Focus="1" Select="1" Playlist="1">
+                    <Font Size="9" Color="f8e9ed" />
+                </State>
+            </ArtistTitle>
+            <Rating>
+                <Position Right="50" Top="2" />
+                <Skin File="Rating\Rating.xml" />
+            </Rating>
+            <Time>
+                <Position Right="10" Top="3" />
+                <State Focus="1" Select="1">
+                    <Font Size="9" Color="f8e9ed" />
+                </State>
+                <State Play="1" Pause="1">
+                    <Font Size="9" Color="f8e9ed" />
+                </State>
+                <State Normal="1">
+                    <Font Size="9" Color="a18b91" />
+                </State>
+            </Time>
+        </Elements>
+        <Background>
+            <Fill>
+                <Position Left="5" Right="5" Top="0" Bottom="0" />
+                <State Select="1">
+                    <Fill Color="63202b" />
+                </State>
+                <State Focus="1">
+                    <Fill Color="8b1a26" />
+                </State>
+            </Fill>
+            <Image>
+                <Position Left="14" Top="6" />
+                <State Play="1" Library="1">
+                    <Image File="Background\Play.png" />
+                </State>
+                <State Pause="1" Library="1">
+                    <Image File="Background\Pause.png" />
+                </State>
+            </Image>
+            <Image>
+                <Position Left="16" Top="6" />
+                <State Play="1" Playlist="1">
+                    <Image File="Background\Play.png" />
+                </State>
+                <State Pause="1" Playlist="1">
+                    <Image File="Background\Pause.png" />
+                </State>
+            </Image>
+        </Background>
+    </Song>
+    <Left Width="130" Height="120">
+        <Elements>
+            <Cover>
+                <Position Left="6" Top="0" />
+                <Skin File="Cover\Cover.xml" />
+            </Cover>
+        </Elements>
+    </Left>
+</Playlist>

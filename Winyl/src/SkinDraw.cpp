@@ -1388,6 +1388,7 @@ std::unique_ptr<ZipFile> SkinDraw::NewZipFile(const std::wstring& programPath, c
 bool SkinDraw::LoadSkin(const std::wstring& programPath, const std::wstring& skinName, ZipFile* zipFile, bool isMini)
 {
 	UnloadSkin();
+	stateHighlight = RGB(255, 61, 61);
 
 	// Compose the file name for example "Skin\Default\Skin.xml"
 
@@ -1421,6 +1422,18 @@ bool SkinDraw::LoadSkin(const std::wstring& programPath, const std::wstring& ski
 
 		if (xmlMain)
 		{
+			// Optional accent color for enabled toggle switches.
+			XmlNode xmlHighlight = xmlMain.FirstChild("Highlight");
+			if (xmlHighlight)
+			{
+				const char* color = xmlHighlight.AttributeRaw("Color");
+				if (color && strlen(color) == 6)
+				{
+					DWORD c = strtoul(color, 0, 16);
+					stateHighlight = RGB(GetBValue(c), GetGValue(c), GetRValue(c));
+				}
+			}
+
 			XmlNode xmlSkinLayouts = xmlMain.FirstChild("SkinLayouts");
 			if (xmlSkinLayouts)
 			{
@@ -1545,6 +1558,8 @@ bool SkinDraw::LoadSkin(const std::wstring& programPath, const std::wstring& ski
 				layouts.emplace_back(new SkinLayout());
 				layouts.back()->LoadSkin(xmlLayout, path, zipFile);
 			}
+
+			ApplyHighlightColor();
 		}
 	}
 	else
@@ -1553,9 +1568,22 @@ bool SkinDraw::LoadSkin(const std::wstring& programPath, const std::wstring& ski
 	return true;
 }
 
+void SkinDraw::ApplyHighlightColor()
+{
+	for (std::size_t i = 0, isize = layouts.size(); i < isize; ++i)
+	{
+		for (std::size_t j = 0, jsize = layouts[i]->elements.size(); j < jsize; ++j)
+		{
+			if (layouts[i]->elements[j]->element)
+				layouts[i]->elements[j]->element->stateHighlight = stateHighlight;
+		}
+	}
+}
+
 bool SkinDraw::LoadSkinAlpha(const std::wstring& programPath, const std::wstring& skinName, ZipFile* zipFile)
 {
 	UnloadSkin();
+	stateHighlight = RGB(255, 61, 61);
 
 	// Compose the file name for example "Skin\Default\Skin.xml"
 
@@ -1581,11 +1609,24 @@ bool SkinDraw::LoadSkinAlpha(const std::wstring& programPath, const std::wstring
 
 		if (xmlMain)
 		{
+			XmlNode xmlHighlight = xmlMain.FirstChild("Highlight");
+			if (xmlHighlight)
+			{
+				const char* color = xmlHighlight.AttributeRaw("Color");
+				if (color && strlen(color) == 6)
+				{
+					DWORD c = strtoul(color, 0, 16);
+					stateHighlight = RGB(GetBValue(c), GetGValue(c), GetRValue(c));
+				}
+			}
+
 			for (XmlNode xmlLayout = xmlMain.FirstChild("Layout"); xmlLayout; xmlLayout = xmlLayout.NextChild())
 			{
 				layouts.emplace_back(new SkinLayout());
 				layouts.back()->LoadSkin(xmlLayout, path, zipFile);
 			}
+
+			ApplyHighlightColor();
 			
 			isLayered = true;
 		}

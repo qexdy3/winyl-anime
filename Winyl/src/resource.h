@@ -29,6 +29,7 @@
 #define IDD_DLGPAGELIBRARYOPT           126
 #define IDD_DLGPAGECOVER                127
 #define IDD_DLGPAGELYRICS               128
+#define IDD_DLGSKINEDITOR               129
 #define IDI_ICON_WINYL                  200
 #define IDI_ICON_SKIN                   201
 #define IDI_ICON_HOTKEY                 202
@@ -357,6 +358,14 @@
 #define IDC_STATIC_NEXT_PREV            1258
 #define IDC_STATIC_ZORDER               1259
 #define IDC_BUTTON_COVER_GOOGLE         1260
+#define IDC_SKIN_EDIT                   1261
+#define IDC_SKIN_IMAGES                 1262
+#define IDC_SKIN_REPLACE                1263
+#define IDC_SKIN_RESTORE                1264
+#define IDC_SKIN_TARGET                 1265
+#define IDC_SKIN_MODE                   1266
+#define IDC_SKIN_COLOR                  1267
+#define IDC_SKIN_BACKGROUND_SAVE        1268
 #define ID_KEY_DELETE                   32771
 #define ID_KEY_SPACE                    32772
 #define ID_KEY_ENTER                    32773

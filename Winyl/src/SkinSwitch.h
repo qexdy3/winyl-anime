@@ -41,6 +41,10 @@ public:
 	bool IsRedrawHover() override;
 	bool IsRedrawPress() override;
 
+	// Draw a bright underline when a toggle switch is enabled, so its state
+	// is visible even if the On/Off skin images look almost identical.
+	void DrawStateMark(HDC dc);
+
 	SkinElement* OnMouseMove(unsigned flags, CPoint& point) override;
 	SkinElement* OnButtonDown(unsigned flags, CPoint& point) override;
 	SkinElement* OnButtonUp(unsigned flags, CPoint& point) override;

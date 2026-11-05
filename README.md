@@ -40,14 +40,36 @@ Priority: `Contain` → `Cover` → `Stretch` → legacy `Crop`. When one of the
 used, scrolling repaints the viewport instead of blitting already painted pixels, so the
 wallpaper no longer drifts while the list scrolls.
 
+### 3. Visible toggle state and skin editor
+
+Repeat, Shuffle and Mute show a bright underline when enabled, including during
+hover animations. Skin authors can set the accent in the corresponding window
+XML with `<Highlight Color="ff3d3d" />` under `<Window>`.
+
+Open **Skin** (F4), select an unpacked skin and click **Edit...**. The editor
+can replace background, button and other PNG/BMP/JPEG images and restore the
+original images. It also edits the playlist and library background color and
+Crop/Stretch/Cover/Contain mode. Image replacements and background settings
+are saved immediately; original files are preserved alongside them as
+`.winyl-original` backups. Apply the skin to see changes; editing the current
+skin reloads it on closing the editor and stops playback. Packed `.wzp` skins
+must first be extracted into a folder in `Skin` and the Skin dialog reopened.
+
+### Ready-made Tokyo Ghoul theme
+
+The anime / dead-inside theme is in
+[`themes/Tokyo_Ghoul_No_Blue_Icons`](themes/Tokyo_Ghoul_No_Blue_Icons).
+Copy that folder into the player's `Skin` directory and select it in the Skin
+dialog. Artwork and names may be subject to their respective owners' rights.
+
 ## Download
 
 A ready-to-use 32-bit executable is provided in [`dist/Winyl_x86.exe`](dist/Winyl_x86.exe)
-and as a [release asset](https://github.com/qexdy3/winyl-3.3.1-fixed/releases/tag/v3.3.1-fixed).
+and as a [release asset](https://github.com/qexdy3/winyl-3.3.1-fixed/releases/tag/v3.3.1-skin-editor).
 
 * File version: 3.3.1.0
-* Size: 2 417 152 bytes
-* SHA-256: `044FDECCA7F1A302BF1D1B799D76FE2A9EFF913CE86F46DA9197ABBA29C5BB60`
+* Size: 2 435 584 bytes
+* SHA-256: `0B900F56E2650D84806CABD3847863007EA3AFD312AB21446839C37C32861BCE`
 
 The player needs the BASS audio libraries (`bass.dll`, `bassmix.dll`, `bassasio.dll`,
 `basswasapi.dll`, `bass_fx.dll`) next to `Winyl.exe`. They are not included in this
@@ -68,8 +90,9 @@ Output: `Release\Winyl.exe`.
 
 ## Patches
 
-The complete diff against upstream Winyl 3.3.1 is in
-[`Winyl_3.3.1_fixes.patch`](Winyl_3.3.1_fixes.patch) (8 source files).
+[`Winyl_3.3.1_fixes.patch`](Winyl_3.3.1_fixes.patch) contains the earlier
+button and background fixes. The skin editor and toggle indicator are in the
+repository source, not in that historical patch.
 
 ---
 
@@ -88,6 +111,18 @@ The complete diff against upstream Winyl 3.3.1 is in
 2. **Фон плейлиста и библиотеки.** Добавлены необязательные атрибуты `Stretch`, `Cover`
    и `Contain` у `<Background>`; при их использовании фон больше не «уезжает» при
    прокрутке. Старые скины работают как раньше.
+3. **Индикатор режима.** Включённые Repeat, Shuffle и Mute выделены яркой полоской.
+4. **Редактор скинов и тем.** Нажмите F4, выберите распакованный скин и нажмите
+   **Edit...**. Можно заменить изображения фона, кнопок и других элементов, восстановить
+   оригиналы и настроить цвет и режим фона плейлиста и библиотеки. Изменения сохраняются
+   сразу, копии оригиналов получают расширение `.winyl-original`. При закрытии редактора
+   текущий скин перезагружается, воспроизведение останавливается. Архив `.wzp` сначала
+   нужно распаковать в отдельную папку внутри `Skin` и заново открыть окно выбора скина.
+
+**Готовая аниме / дед-инсайд тема Tokyo Ghoul:**
+[`themes/Tokyo_Ghoul_No_Blue_Icons`](themes/Tokyo_Ghoul_No_Blue_Icons).
+Скопируйте папку темы в `Skin` установленного плеера и выберите её по F4.
+Права на персонажей и изображения могут принадлежать их правообладателям.
 
 Готовая 32-битная сборка: [`dist/Winyl_x86.exe`](dist/Winyl_x86.exe)
-(SHA-256 `044FDECCA7F1A302BF1D1B799D76FE2A9EFF913CE86F46DA9197ABBA29C5BB60`).
+(SHA-256 `0B900F56E2650D84806CABD3847863007EA3AFD312AB21446839C37C32861BCE`).

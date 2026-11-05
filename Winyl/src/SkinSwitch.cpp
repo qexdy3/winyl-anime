@@ -153,6 +153,32 @@ void SkinSwitch::Draw(HDC dc, bool isAlpha)
 				imButton2[0].Draw(dc, rcRect);
 		}
 	}
+
+	DrawStateMark(dc);
+}
+
+void SkinSwitch::DrawStateMark(HDC dc)
+{
+	if (!isState)
+		return;
+
+	// Only toggles need a clear "enabled" indicator.
+	if (type != Type::Repeat && type != Type::Shuffle && type != Type::Mute)
+		return;
+
+	int height = std::max(3, rcRect.Height() / 10);
+
+	CRect rc = rcRect;
+	rc.left += 1;
+	rc.right -= 1;
+	rc.top = rc.bottom - height;
+
+	if (rc.Width() <= 0 || rc.Height() <= 0)
+		return;
+
+	// Use alpha blending so the mark is drawn correctly both in normal and
+	// layered (per-pixel alpha) windows.
+	ExImage::DrawAlphaFill(dc, rc, stateHighlight | 0xFF000000);
 }
 
 bool SkinSwitch::DrawFade(HDC dc, bool isAlpha)
@@ -175,6 +201,7 @@ bool SkinSwitch::DrawFade(HDC dc, bool isAlpha)
 		}
 
 		fadeAlpha = 255;
+		DrawStateMark(dc);
 		return true;
 	}
 
@@ -236,6 +263,8 @@ bool SkinSwitch::DrawFade(HDC dc, bool isAlpha)
 			}
 		}
 	}
+
+	DrawStateMark(dc);
 
 	if (fadeAlpha == 0 || fadeAlpha == 255)
 		return true;
@@ -370,4 +399,3 @@ void SkinSwitch::SetParam(int param)
 {
 	isState = (param ? true : false);
 }
-

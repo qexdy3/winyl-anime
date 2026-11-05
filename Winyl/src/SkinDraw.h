@@ -155,6 +155,9 @@ private:
 
 	bool isFadeEnabled = false;
 
+	// Accent color for enabled toggle switches (see SkinElement::stateHighlight)
+	COLORREF stateHighlight = RGB(255, 61, 61);
+
 	bool isShadowDwm = false;
 	bool isShadowLayered = false;
 
@@ -181,6 +184,9 @@ private:
 	int splitterLayoutY = 0;
 
 	void UnloadSkin();
+
+	// Propagate stateHighlight to every loaded skin element
+	void ApplyHighlightColor();
 
 	void RedrawElement(SkinElement* element, bool isForceUpdate = false);
 	void RedrawWindowDefault();

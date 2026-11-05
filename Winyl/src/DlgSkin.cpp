@@ -19,6 +19,141 @@
 #include "resource.h"
 #include "DlgSkin.h"
 #include "FileSystem.h"
+#include "FileDialogEx.h"
+
+// A deliberately small editor for unpacked skins. Originals are kept beside
+// the modified files; editing never changes a packed skin.
+class SkinEditor : public DialogEx
+{
+public:
+	explicit SkinEditor(const std::wstring& root) : root(root) {}
+	bool changed = false;
+private:
+	std::wstring root;
+	std::vector<std::wstring> images;
+
+	void Scan(const std::wstring& relative)
+	{
+		WIN32_FIND_DATAW fd = {};
+		HANDLE h = ::FindFirstFileW((root + relative + L"*").c_str(), &fd);
+		if (h == INVALID_HANDLE_VALUE) return;
+		do {
+			std::wstring name = fd.cFileName;
+			if (name == L"." || name == L".." || (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) continue;
+			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) Scan(relative + name + L"\\");
+			else {
+				std::wstring ext = PathEx::ExtFromFile(name);
+				for (auto& c : ext) if (c >= L'A' && c <= L'Z') c += L'a' - L'A';
+				if (ext == L"png" || ext == L"bmp" || ext == L"jpg" || ext == L"jpeg") images.push_back(relative + name);
+			}
+		} while (::FindNextFileW(h, &fd));
+		::FindClose(h);
+	}
+
+	bool Backup(const std::wstring& path)
+	{
+		std::wstring backup = path + L".winyl-original";
+		if (::CopyFileW(path.c_str(), backup.c_str(), TRUE)) return true;
+		return ::GetLastError() == ERROR_FILE_EXISTS && !(::GetFileAttributesW(backup.c_str()) & FILE_ATTRIBUTE_DIRECTORY);
+	}
+
+	std::wstring BackgroundFile()
+	{
+		int target = (int)::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_GETCURSEL, 0, 0);
+		return root + (target == 1 ? L"Library\\Library.xml" : L"Playlist\\Playlist.xml");
+	}
+
+	void LoadBackground()
+	{
+		pugi::xml_document doc;
+		if (!doc.load_file(BackgroundFile().c_str(), pugi::parse_full | pugi::parse_ws_pcdata, pugi::encoding_utf8)) {
+			::SetDlgItemTextW(thisWnd, IDC_SKIN_COLOR, L"");
+			return;
+		}
+		int target = (int)::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_GETCURSEL, 0, 0);
+		auto bg = doc.child(target == 1 ? "Library" : "Playlist").child("Background");
+		int mode = bg.attribute("Contain").as_bool() ? 3 : bg.attribute("Cover").as_bool() ? 2 : bg.attribute("Stretch").as_bool() ? 1 : 0;
+		::SendDlgItemMessageW(thisWnd, IDC_SKIN_MODE, CB_SETCURSEL, mode, 0);
+		std::wstring color = UTF::UTF16(bg.attribute("Color").as_string("000000"));
+		::SetDlgItemTextW(thisWnd, IDC_SKIN_COLOR, color.c_str());
+	}
+
+	void SaveBackground()
+	{
+		wchar_t color[16] = {};
+		::GetDlgItemTextW(thisWnd, IDC_SKIN_COLOR, color, 16);
+		if (wcslen(color) != 6 || wcsspn(color, L"0123456789abcdefABCDEF") != 6) {
+			::MessageBoxW(thisWnd, L"Enter a six-digit RGB color, for example 100b10.", L"Skin editor", MB_ICONWARNING); return;
+		}
+		std::wstring file = BackgroundFile();
+		pugi::xml_document doc;
+		if (!doc.load_file(file.c_str(), pugi::parse_full | pugi::parse_ws_pcdata, pugi::encoding_utf8)) {
+			::MessageBoxW(thisWnd, L"Could not read the background XML file.", L"Skin editor", MB_ICONERROR); return;
+		}
+		int target = (int)::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_GETCURSEL, 0, 0);
+		auto bg = doc.child(target == 1 ? "Library" : "Playlist").child("Background");
+		if (!bg) { ::MessageBoxW(thisWnd, L"This skin has no background element for this view.", L"Skin editor", MB_ICONWARNING); return; }
+		auto attr = bg.attribute("Color");
+		if (!attr) attr = bg.append_attribute("Color");
+		attr.set_value(UTF::UTF8(color).c_str());
+		bg.remove_attribute("Stretch"); bg.remove_attribute("Cover"); bg.remove_attribute("Contain");
+		int mode = (int)::SendDlgItemMessageW(thisWnd, IDC_SKIN_MODE, CB_GETCURSEL, 0, 0);
+		if (mode > 0 && mode < 4) bg.append_attribute(mode == 1 ? "Stretch" : mode == 2 ? "Cover" : "Contain").set_value("1");
+		wchar_t temp[MAX_PATH] = {};
+		std::wstring dir = PathEx::PathFromFile(file);
+		if (!Backup(file) || !::GetTempFileNameW(dir.c_str(), L"wny", 0, temp)) {
+			::MessageBoxW(thisWnd, L"Could not create backup or temporary file. Check folder permissions.", L"Skin editor", MB_ICONERROR); return;
+		}
+		bool ok = doc.save_file(temp, "", pugi::format_raw, pugi::encoding_utf8) && ::MoveFileExW(temp, file.c_str(), MOVEFILE_REPLACE_EXISTING);
+		if (!ok) { ::DeleteFileW(temp); ::MessageBoxW(thisWnd, L"Could not save background settings.", L"Skin editor", MB_ICONERROR); return; }
+		changed = true;
+	}
+
+	void ImageAction(bool restore)
+	{
+		int index = (int)::SendDlgItemMessageW(thisWnd, IDC_SKIN_IMAGES, LB_GETCURSEL, 0, 0);
+		if (index < 0 || (size_t)index >= images.size()) return;
+		std::wstring dest = root + images[index], source;
+		if (restore) source = dest + L".winyl-original";
+		else {
+			FileDialogEx dlg;
+			FileDialogEx::FILE_TYPES types[] = {{L"Images", L"*.png;*.bmp;*.jpg;*.jpeg"}};
+			dlg.SetFileTypes(types, 1);
+			if (!dlg.DoModalFile(thisWnd)) return;
+			source = dlg.GetFile();
+			ExImage test;
+			if (!test.LoadFile(source)) { ::MessageBoxW(thisWnd, L"The selected file is not a readable image.", L"Skin editor", MB_ICONERROR); return; }
+			if (!Backup(dest)) { ::MessageBoxW(thisWnd, L"Could not back up the original image.", L"Skin editor", MB_ICONERROR); return; }
+		}
+		if (!::CopyFileW(source.c_str(), dest.c_str(), FALSE)) { ::MessageBoxW(thisWnd, L"Could not replace image or no original backup exists.", L"Skin editor", MB_ICONERROR); return; }
+		changed = true;
+	}
+
+	INT_PTR DialogProc(HWND, UINT msg, WPARAM wp, LPARAM) override
+	{
+		if (msg == WM_INITDIALOG) {
+			Scan(L"");
+			std::sort(images.begin(), images.end());
+			for (const auto& image : images) ::SendDlgItemMessageW(thisWnd, IDC_SKIN_IMAGES, LB_ADDSTRING, 0, (LPARAM)image.c_str());
+			::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_ADDSTRING, 0, (LPARAM)L"Playlist");
+			::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_ADDSTRING, 0, (LPARAM)L"Library");
+			const wchar_t* modes[] = {L"Crop", L"Stretch", L"Cover", L"Contain"};
+			for (const auto mode : modes) ::SendDlgItemMessageW(thisWnd, IDC_SKIN_MODE, CB_ADDSTRING, 0, (LPARAM)mode);
+			::SendDlgItemMessageW(thisWnd, IDC_SKIN_TARGET, CB_SETCURSEL, 0, 0);
+			LoadBackground(); return TRUE;
+		}
+		if (msg == WM_COMMAND) {
+			switch (LOWORD(wp)) {
+			case IDCANCEL: EndDialog(IDCANCEL); return TRUE;
+			case IDC_SKIN_REPLACE: ImageAction(false); return TRUE;
+			case IDC_SKIN_RESTORE: ImageAction(true); return TRUE;
+			case IDC_SKIN_BACKGROUND_SAVE: SaveBackground(); return TRUE;
+			case IDC_SKIN_TARGET: if (HIWORD(wp) == CBN_SELCHANGE) LoadBackground(); return TRUE;
+			}
+		}
+		return FALSE;
+	}
+};
 
 DlgSkin::DlgSkin()
 {
@@ -47,6 +182,19 @@ INT_PTR DlgSkin::DialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPara
 		case IDCANCEL:
 			OnBnClickedCancel();
 			EndDialog(LOWORD(wParam));
+			return TRUE;
+		case IDC_SKIN_EDIT:
+			if (selectedSkin < 0) return TRUE;
+			if (skinNames[selectedSkin].second) {
+				::MessageBoxW(thisWnd, L"Extract the .wzp skin into a folder in Skin first, then reopen this dialog.", L"Skin editor", MB_ICONINFORMATION);
+				return TRUE;
+			}
+			{
+				SkinEditor editor(programPath + L"Skin\\" + skinNames[selectedSkin].first + L"\\");
+				editor.ModalDialog(thisWnd, IDD_DLGSKINEDITOR);
+				if (editor.changed && skinNames[selectedSkin].first == curSkinName && !curSkinPack)
+					OnBnClickedOK();
+			}
 			return TRUE;
 		}
 		return TRUE;
@@ -195,6 +343,11 @@ void DlgSkin::OnBnClickedOK()
 
 		if (!result)
 			MessageBox::Show(thisWnd, lang->GetLine(Lang::Message, 1), lang->GetLine(Lang::Message, 6), MessageBox::Icon::Warning);
+		else
+		{
+			curSkinName = skinNames[selectedSkin].first;
+			curSkinPack = !!skinNames[selectedSkin].second;
+		}
 	}
 }
 
@@ -323,4 +476,3 @@ void DlgSkin::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruct)
 		imPreview.Draw(lpDrawItemStruct->hDC, 0, 0);
 	}
 }
-
