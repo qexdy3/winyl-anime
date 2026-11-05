@@ -66,7 +66,7 @@ dialog. Artwork and names may be subject to their respective owners' rights.
 ## Download
 
 A ready-to-use 32-bit executable is provided in [`dist/Winyl_x86.exe`](dist/Winyl_x86.exe)
-and as a [release asset](https://github.com/qexdy3/winyl-3.3.1-fixed/releases/tag/v3.3.1-skin-editor).
+and as a [release asset](https://github.com/qexdy3/winyl-anime/releases/tag/v3.3.1-skin-editor).
 
 * File version: 3.3.1.0
 * Size: 2 435 584 bytes
